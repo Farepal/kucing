@@ -4,7 +4,7 @@ const path = require('path')
 exports.DeleteFileInDrive = async (fileId) => {
     if (fileId !== undefined || fileId !== null || fileId !== '') {
         await drive.files.delete({
-            fileId: fileId
+            fileId: fileId 
         })
     }
 }
