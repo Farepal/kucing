@@ -1,3 +1,5 @@
+####### NO 1 #######
+
 def convolution(x, first_n_of_x, last_n_of_x, h, first_n_of_h, last_n_of_h):
     y = {}
     for n in range(first_n_of_x + first_n_of_h, last_n_of_x + last_n_of_h + 1):
