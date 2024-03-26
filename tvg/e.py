@@ -156,7 +156,7 @@ class TransformApp:
         
         # color red the selected point index
         for i in range(len(self.selected_point_index) - 1):
-            self.canvas.create_line(self.selected_point_index[i], self.selected_point_index[i+1], fill='red')
+            self.canvas.create_rectangle(self.selected_point_index[i], self.selected_point_index[i+1], fill='red')
 
     def selected_point_index_to_cartesian_related_to_x1_y1(self):
         if len(self.selected_point_index) == 0:
