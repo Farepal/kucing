@@ -1,0 +1,8 @@
+CHIP Test {
+    IN in[16];
+    OUT out[16];
+
+    PARTS:
+    Add16(a=in, b=true, out=w1);
+    Not16(in=w1, out=out);
+}
