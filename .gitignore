@@ -12,3 +12,5 @@ belajarDocker
 penyimpanan*.js
 find*
 *.pyc
+*.out
+*eclipse*
