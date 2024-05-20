@@ -10,6 +10,12 @@
         "iosfwd": "cpp",
         "iostream": "cpp",
         "functional": "cpp",
-        "streambuf": "cpp"
-    }
+        "streambuf": "cpp",
+        "stm32f1xx_hal.h": "c"
+    },
+    "idf.port": "/dev/ttyUSB0",
+    "idf.adapterTargetName": "esp32",
+    "idf.openOcdConfigs": [
+        "board/esp32-wrover-kit-3.3v.cfg"
+    ]
 }

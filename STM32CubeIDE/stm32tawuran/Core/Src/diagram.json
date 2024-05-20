@@ -1,0 +1,11 @@
+{
+    "version": 1,
+    "author": "Muhamad Farrel Adrian",
+    "editor": "wokwi",
+    "parts": [
+      { "type": "board-stm32-bluepill", "id": "stm1", "top": -30.16, "left": 82.77, "attrs": {} },
+      { "type": "wokwi-led", "id": "led1", "top": 34.8, "left": -5.8, "attrs": { "color": "red" } }
+    ],
+    "connections": [ [ "led1:C", "stm1:GND.1", "black", [ "v0" ] ], [ "led1:A", "stm1:B9", "green", [ "v0" ] ] ],
+    "dependencies": {}
+  }

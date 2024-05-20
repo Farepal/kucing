@@ -14,3 +14,6 @@ find*
 *.pyc
 *.out
 *eclipse*
+bl*pil*
+ble_test
+esp32
