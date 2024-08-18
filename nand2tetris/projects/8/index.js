@@ -70,7 +70,7 @@ class CodeWriter {
     constructor(outputFilePath) {
         this.outputFilePath = outputFilePath;
         this.aCount = 0;
-        this.staticMemoryNumber = 16;
+        this.staticMemoryNumber = 18;
         this.staticMappingNumber = {};
         this.inputFileNameWithoutExtension = path.basename(outputFilePath, '.asm');
         this.currentFunctionName = '';
@@ -97,7 +97,7 @@ class CodeWriter {
             'not': '@SP\nA=M-1\nM=!M'
         };
         this.saveToFileAndWriteComment(command, template[command]);
-        
+
         this.aCount++;
     }
 
@@ -156,9 +156,9 @@ class CodeWriter {
     }
 
     writeCall(functionName, numArgs) {
-        const returnAddress = `${this.currentFunctionName}$ret.${this.aCount}`;
+        const returnAddress = `RETURN${this.aCount}`;
 
-        this.saveToFileAndWriteComment(`CALL ${functionName}`, ``);
+        this.saveToFileAndWriteComment(`CALL ${functionName} ${numArgs}`, ``);
         this.saveToFileAndWriteComment(`PUSH (${returnAddress})`, `@${returnAddress}\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1`);
         this.saveToFileAndWriteComment(`PUSH LCL`, '@LCL\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1');
         this.saveToFileAndWriteComment(`PUSH ARG`, '@ARG\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1');
@@ -173,7 +173,7 @@ class CodeWriter {
     }
 
     writeFunction(functionName, numLocals) {
-        this.saveToFileAndWriteComment(`FUNCTION ${functionName}`, '');
+        this.saveToFileAndWriteComment(`FUNCTION ${functionName} ${numLocals}`, '');
         this.currentFunctionName = functionName;
         this.writeLabel(functionName);
         for (let i = 0; i < numLocals; i++) {
@@ -203,9 +203,6 @@ const Run = (folderPath, folderName) => {
     const files = fs.readdirSync(folderPath);
     const vmFiles = files.filter(file => file.endsWith('.vm'));
     const sysIndex = vmFiles.indexOf('Sys.vm');
-    if (sysIndex !== -1) {
-        [vmFiles[0], vmFiles[sysIndex]] = [vmFiles[sysIndex], vmFiles[0]];
-    }
 
     const outputPath = path.join(folderPath, `${folderName}.asm`);
     fs.writeFileSync(outputPath, '');
@@ -215,6 +212,10 @@ const Run = (folderPath, folderName) => {
         const inputPath = path.join(folderPath, vmFile);
         const parser = new Parser(inputPath);
         codeWriter.setInputFileName(path.basename(vmFile, '.vm'))
+        if (sysIndex !== -1) {
+            codeWriter.saveToFileAndWriteComment('bootstrap', '@256\nD=A\n@SP\nM=D');
+            codeWriter.writeCall('Sys.init', 0);
+        }
         while (parser.hasMoreLines()) {
             parser.advance();
             const commandType = parser.commandType();
@@ -236,8 +237,9 @@ const Run = (folderPath, folderName) => {
                 codeWriter.writeReturn();
             }
         }
+        console.log(codeWriter.staticMappingNumber)
     }
-
+    
     codeWriter.close();
 }
 
