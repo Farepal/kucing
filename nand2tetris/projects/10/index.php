@@ -508,15 +508,6 @@ function main($argv)
     if (isset($argv[1])) {
         $inputFolderOrFile = $argv[1];
         $jackAnalyzer = new JackAnalyzer($inputFolderOrFile);
-        // $jack
-        // $jackTokenizer = new JackTokenizer($inputFolderOrFile);
-        // $count = 0;
-        // while ($jackTokenizer->hasMoreTokens()) {
-        // $jackTokenizer->advance();
-        // echo $jackTokenizer->getCurrentToken() . $jackTokenizer->tokenType() . "\n";
-        // $count++;
-        // }
-        // echo $count . "\n";
     } else {
         echo "Usage: php JackTokenizer.php <inputFile.jack>\n";
     }
