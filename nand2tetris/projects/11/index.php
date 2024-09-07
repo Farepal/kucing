@@ -409,7 +409,8 @@ class compilationEngine
         if ($this->lookAheadToken('[')) {
             $this->advance(); // [
             $this->compileExpression();
-            $this->VMWriter->writePush('local', $this->symbolTable->indexOf($popVarName));
+            // $this->VMWriter->writePush('local', $this->symbolTable->indexOf($popVarName));
+            $this->autoPush($popVarName);
             $this->VMWriter->writeArithmetic('add');
             $this->advance(); // ]
             $isAccessArray = true;
@@ -423,14 +424,8 @@ class compilationEngine
             $this->VMWriter->writePop('pointer', 1);
             $this->VMWriter->writePush('temp', 0);
             $this->VMWriter->writePop('that', 0);
-        } elseif ($this->symbolTable->kindOf($popVarName) == 'VAR') {
-            $this->VMWriter->writePop('local', $this->symbolTable->indexOf($popVarName));
-        } elseif ($this->symbolTable->kindOf($popVarName) == 'ARG') {
-            $this->VMWriter->writePop('argument', $this->symbolTable->indexOf($popVarName));
-        } elseif ($this->symbolTable->kindOf($popVarName) == 'FIELD') {
-            $this->VMWriter->writePop('this', $this->symbolTable->indexOf($popVarName));
-        } elseif ($this->symbolTable->kindOf($popVarName) == 'STATIC') {
-            $this->VMWriter->writePop('static', $this->symbolTable->indexOf($popVarName));
+        } else {
+            $this->autoPop($popVarName);
         }
         $this->advance(); // ;
         $this->writeNonTerminalEnd('letStatement');
@@ -478,6 +473,7 @@ class compilationEngine
     {
         $this->writeNonTerminalStart('whileStatement');
         $whileIndex = $this->VMWriter->whileIndex;
+        echo $whileIndex;
         $this->VMWriter->whileIndex++;
         $this->advance(); // while
         $this->advance(); // (
@@ -511,7 +507,8 @@ class compilationEngine
                 $this->advance(); // .
 
                 if ($this->symbolTable->kindOf($functionName) != 'NONE') {
-                    $this->VMWriter->writePush('local', $this->symbolTable->indexOf($functionName));
+                    // $this->VMWriter->writePush('local', $this->symbolTable->indexOf($functionName));
+                    $this->autoPush($functionName);
                     $functionName = $this->symbolTable->typeOf($functionName) . '.' . $this->nextToken;
                 } else {
                     $functionName .= "." . $this->nextToken;
@@ -554,6 +551,8 @@ class compilationEngine
         }
         $this->VMWriter->writeReturn();
         $this->VMWriter->close();
+        $this->VMWriter->whileIndex = 0;
+        $this->VMWriter->ifIndex = 0;
         $this->advance(); // ;
         $this->writeNonTerminalEnd('returnStatement');
     }
@@ -622,7 +621,8 @@ class compilationEngine
             if ($this->lookAheadToken('[')) {
                 $this->advance(); // [
                 $this->compileExpression();
-                $this->VMWriter->writePush('local', $this->symbolTable->indexOf($pushVarName));
+                // $this->VMWriter->writePush('local', $this->symbolTable->indexOf($pushVarName));
+                $this->autoPush($pushVarName);
                 $this->VMWriter->writeArithmetic('add');
                 $this->VMWriter->writePop('pointer', 1);
                 $this->VMWriter->writePush('that', 0);
@@ -631,7 +631,8 @@ class compilationEngine
                 $this->advance(); // .
                 if ($this->symbolTable->kindOf($pushVarName) != 'NONE') {
                     $functionName = $this->symbolTable->typeOf($pushVarName) . '.' . $this->nextToken;
-                    $this->VMWriter->writePush('local', $this->symbolTable->indexOf($pushVarName));
+                    // $this->VMWriter->writePush('local', $this->symbolTable->indexOf($pushVarName));
+                    $this->autoPush($pushVarName);
                 } else {
                     $functionName = $pushVarName . '.' . $this->nextToken;
                 }
@@ -648,15 +649,7 @@ class compilationEngine
                 $this->VMWriter->writeCall($this->symbolTable->className . '.' . $pushVarName, $this->expressionListCount + 1);
                 $this->expressionListCount = 0;
             } else {
-                if ($this->symbolTable->kindOf($pushVarName) == 'VAR') {
-                    $this->VMWriter->writePush('local', $this->symbolTable->indexOf($pushVarName));
-                } elseif ($this->symbolTable->kindOf($pushVarName) == 'ARG') {
-                    $this->VMWriter->writePush('argument', $this->symbolTable->indexOf($pushVarName));
-                } elseif ($this->symbolTable->kindOf($pushVarName) == 'FIELD') {
-                    $this->VMWriter->writePush('this', $this->symbolTable->indexOf($pushVarName));
-                } elseif ($this->symbolTable->kindOf($pushVarName) == 'STATIC') {
-                    $this->VMWriter->writePush('static', $this->symbolTable->indexOf($pushVarName));
-                }
+                $this->autoPush($pushVarName);
             }
         } elseif ($this->isNextUnaryOperator()) {
             $unaryOperator = $this->nextToken;
@@ -688,6 +681,32 @@ class compilationEngine
             }
         }
         $this->writeNonTerminalEnd('expressionList');
+    }
+
+    private function autoPush($varName)
+    {
+        if ($this->symbolTable->kindOf($varName) == 'VAR') {
+            $this->VMWriter->writePush('local', $this->symbolTable->indexOf($varName));
+        } elseif ($this->symbolTable->kindOf($varName) == 'ARG') {
+            $this->VMWriter->writePush('argument', $this->symbolTable->indexOf($varName));
+        } elseif ($this->symbolTable->kindOf($varName) == 'FIELD') {
+            $this->VMWriter->writePush('this', $this->symbolTable->indexOf($varName));
+        } elseif ($this->symbolTable->kindOf($varName) == 'STATIC') {
+            $this->VMWriter->writePush('static', $this->symbolTable->indexOf($varName));
+        }
+    }
+
+    private function autoPop($varName)
+    {
+        if ($this->symbolTable->kindOf($varName) == 'VAR') {
+            $this->VMWriter->writePop('local', $this->symbolTable->indexOf($varName));
+        } elseif ($this->symbolTable->kindOf($varName) == 'ARG') {
+            $this->VMWriter->writePop('argument', $this->symbolTable->indexOf($varName));
+        } elseif ($this->symbolTable->kindOf($varName) == 'FIELD') {
+            $this->VMWriter->writePop('this', $this->symbolTable->indexOf($varName));
+        } elseif ($this->symbolTable->kindOf($varName) == 'STATIC') {
+            $this->VMWriter->writePop('static', $this->symbolTable->indexOf($varName));
+        }
     }
 }
 
