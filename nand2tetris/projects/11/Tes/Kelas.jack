@@ -1,0 +1,27 @@
+class Kelas {
+    field int x, y;
+    static int length;
+
+    constructor Kelas new(int Ax, int Ay) {
+        let x = Ax;
+        let y = Ay;
+        return this;
+    }
+
+    method void show() {
+        do Output.printString("Test 1: expected result: 5; actual result: ");
+        return;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void gas(int x, int b, int c) {
+        var int d;
+        let d = x + b + c;
+        return;
+    }
+
+}

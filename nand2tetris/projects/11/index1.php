@@ -103,7 +103,7 @@ class JackTokenizer
         $cleanedSlashComments = $this->clearSlashComments($allLine);
         $dirtyOneLine = implode(' ', $cleanedSlashComments);
         $cleanedAsteriskComments = preg_replace('/\/\*.*?\*\//s', '', $dirtyOneLine);
-        $spaceBetweenSymbols = preg_replace('/(".*?")(*SKIP)(*FAIL)|(\{|\}|\(|\)|\[|\]|\.|\,|\;|\+|\-|\*|\/|\&|\||\<|\>|\=|\~)/', ' $2 ', $cleanedAsteriskComments);
+        $spaceBetweenSymbols = preg_replace('/(\{|\}|\(|\)|\[|\]|\.|\,|\;|\+|\-|\*|\/|\&|\||\<|\>|\=|\~)/', ' $1 ', $cleanedAsteriskComments);
         $cleanedRepeatedSpace = preg_replace('/\s+/', ' ', $spaceBetweenSymbols);
         $oneLine = trim($cleanedRepeatedSpace);
         preg_match_all('/"[^"]*"|\S+/', $oneLine, $matches);
@@ -133,21 +133,15 @@ class compilationEngine
     private $tokenizer;
     private $outputFileXML, $outputFileTXML;
     private $symbolTable;
-    private $VMWriter;
-    private $expressionListCount = 0;
 
-    public function __construct($inputFile, SymbolTable $symbolTable, VMWriter $VMWriter)
+    public function __construct($inputFile, SymbolTable $symbolTable)
     {
-        $this->tokenizer = new JackTokenizer($inputFile);
-        $this->symbolTable = $symbolTable;
-        $this->VMWriter = $VMWriter;
-
         $this->outputFileXML = str_replace('.jack', 'php.xml', $inputFile);
         file_put_contents($this->outputFileXML, '');
-
         $this->outputFileTXML = str_replace('.jack', 'phpT.xml', $inputFile);
         file_put_contents($this->outputFileTXML, '');
-
+        $this->tokenizer = new JackTokenizer($inputFile);
+        $this->symbolTable = $symbolTable;
         $this->fullProcess();
     }
 
@@ -242,8 +236,6 @@ class compilationEngine
     {
         $this->writeNonTerminalStart('class');
         $this->advance(); // class
-
-        $this->symbolTable->className = $this->nextToken;
         $this->advance(); // className
         $this->advance(); // {
         while ($this->lookAheadToken('static') || $this->lookAheadToken('field')) {
@@ -259,24 +251,14 @@ class compilationEngine
     private function compileClassVarDec()
     {
         $this->writeNonTerminalStart('classVarDec');
-
-        $kind = strtoupper($this->nextToken);
-        $this->advance(); // static | field
-
-        $type = $this->nextToken;
-        $this->advance(); // type
-
-        $name = $this->nextToken;
-        $this->advance(); // varName
-        $this->symbolTable->define($name, $type, $kind);
-
-        while ($this->lookAheadToken(',')) {
-            $this->advance(); // ,
-
-            $name = $this->nextToken;
-            $this->advance(); // varName
-            $this->symbolTable->define($name, $type, $kind);
-        }
+        // $this->advance(); // static | field
+        // $this->advance(); // type
+        // $this->advance(); // varName
+        // while ($this->lookAheadToken(',')) {
+        // $this->advance(); // ,
+        // $this->advance(); // varName
+        // }
+        # advanceClassVarDec
         $this->advance(); // ;
         $this->writeNonTerminalEnd('classVarDec');
     }
@@ -284,18 +266,8 @@ class compilationEngine
     private function compileSubroutine()
     {
         $this->writeNonTerminalStart('subroutineDec');
-
-        $this->symbolTable->reset();
-        if ($this->lookAheadToken('method')) {
-            $this->symbolTable->define('this', $this->symbolTable->className, 'ARG');
-        }
-
-        $this->symbolTable->subroutineType = $this->nextToken;
         $this->advance(); // constructor | function | method
-
         $this->advance(); // void | type
-
-        $this->symbolTable->subroutineName = $this->nextToken;
         $this->advance(); // subroutineName
         $this->advance(); // (
         $this->compileParameterList();
@@ -308,24 +280,12 @@ class compilationEngine
     {
         $this->writeNonTerminalStart('parameterList');
         if (!$this->lookAheadToken(')')) {
-            $kind = 'ARG';
-
-            $type = $this->nextToken;
             $this->advance(); // type
-
-            $name = $this->nextToken;
             $this->advance(); // varName
-            $this->symbolTable->define($name, $type, $kind);
-
             while ($this->lookAheadToken(',')) {
                 $this->advance(); // ,
-
-                $type = $this->nextToken;
                 $this->advance(); // type
-
-                $name = $this->nextToken;
                 $this->advance(); // varName
-                $this->symbolTable->define($name, $type, $kind);
             }
         }
         $this->writeNonTerminalEnd('parameterList');
@@ -338,15 +298,6 @@ class compilationEngine
         while ($this->lookAheadToken('var')) {
             $this->compileVarDec();
         }
-        $this->VMWriter->writeFunction($this->symbolTable->className . '.' . $this->symbolTable->subroutineName, $this->symbolTable->varCount('VAR'));
-        if ($this->symbolTable->subroutineType == 'constructor') {
-            $this->VMWriter->writePush('constant', $this->symbolTable->varCount('FIELD'));
-            $this->VMWriter->writeCall('Memory.alloc', 1);
-            $this->VMWriter->writePop('pointer', 0);
-        } elseif ($this->symbolTable->subroutineType == 'method') {
-            $this->VMWriter->writePush('argument', 0);
-            $this->VMWriter->writePop('pointer', 0);
-        }
         while ($this->isNextStatement()) {
             $this->compileStatements();
         }
@@ -357,23 +308,12 @@ class compilationEngine
     private function compileVarDec()
     {
         $this->writeNonTerminalStart('varDec');
-
-        $kind = 'VAR';
         $this->advance(); // var
-
-        $type = $this->nextToken;
         $this->advance(); // type
-
-        $name = $this->nextToken;
         $this->advance(); // varName
-        $this->symbolTable->define($name, $type, $kind);
-
         while ($this->lookAheadToken(',')) {
             $this->advance(); // ,
-
-            $name = $this->nextToken;
             $this->advance(); // varName
-            $this->symbolTable->define($name, $type, $kind);
         }
         $this->advance(); // ;
         $this->writeNonTerminalEnd('varDec');
@@ -402,31 +342,14 @@ class compilationEngine
     {
         $this->writeNonTerminalStart('letStatement');
         $this->advance(); // let
-
-        $isAccessArray = false;
-        $popVarName = $this->nextToken;
         $this->advance(); // varName
         if ($this->lookAheadToken('[')) {
             $this->advance(); // [
             $this->compileExpression();
-            // $this->VMWriter->writePush('local', $this->symbolTable->indexOf($popVarName));
-            $this->autoPush($popVarName);
-            $this->VMWriter->writeArithmetic('add');
             $this->advance(); // ]
-            $isAccessArray = true;
         }
         $this->advance(); // =
         $this->compileExpression();
-
-
-        if ($isAccessArray) {
-            $this->VMWriter->writePop('temp', 0);
-            $this->VMWriter->writePop('pointer', 1);
-            $this->VMWriter->writePush('temp', 0);
-            $this->VMWriter->writePop('that', 0);
-        } else {
-            $this->autoPop($popVarName);
-        }
         $this->advance(); // ;
         $this->writeNonTerminalEnd('letStatement');
     }
@@ -434,26 +357,16 @@ class compilationEngine
     private function compileIf()
     {
         $this->writeNonTerminalStart('ifStatement');
-        $ifIndex = $this->VMWriter->ifIndex;
-        $this->VMWriter->ifIndex++;
         $this->advance(); // if
         $this->advance(); // (
         $this->compileExpression();
         $this->advance(); // )
-        $this->VMWriter->writeIf('IF_TRUE' . $ifIndex);
-        $this->VMWriter->writeGoto('IF_FALSE' . $ifIndex);
-        $this->VMWriter->writeLabel('IF_TRUE' . $ifIndex);
         $this->advance(); // {
         $this->compileStatements();
         while ($this->isNextStatement()) {
             $this->compileStatements();
         }
         $this->advance(); // }
-        $isElseExist = $this->lookAheadToken('else');
-        if ($isElseExist) {
-            $this->VMWriter->writeGoto('IF_END' . $ifIndex);
-        }
-        $this->VMWriter->writeLabel('IF_FALSE' . $ifIndex);
         if ($this->lookAheadToken('else')) {
             $this->advance(); // else
             $this->advance(); // {
@@ -463,32 +376,22 @@ class compilationEngine
             }
             $this->advance(); // }
         }
-        if ($isElseExist) {
-            $this->VMWriter->writeLabel('IF_END' . $ifIndex);
-        }
         $this->writeNonTerminalEnd('ifStatement');
     }
 
     private function compileWhile()
     {
         $this->writeNonTerminalStart('whileStatement');
-        $whileIndex = $this->VMWriter->whileIndex;
-        $this->VMWriter->whileIndex++;
         $this->advance(); // while
         $this->advance(); // (
-        $this->VMWriter->writeLabel('WHILE_EXP' . $whileIndex);
         $this->compileExpression();
-        $this->VMWriter->writeArithmetic('not');
         $this->advance(); // )
-        $this->VMWriter->writeIf('WHILE_END' . $whileIndex);
         $this->advance(); // {
         $this->compileStatements();
         while ($this->isNextStatement()) {
             $this->compileStatements();
         }
-        $this->VMWriter->writeGoto('WHILE_EXP' . $whileIndex);
         $this->advance(); // }
-        $this->VMWriter->writeLabel('WHILE_END' . $whileIndex);
         $this->writeNonTerminalEnd('whileStatement');
     }
 
@@ -496,51 +399,19 @@ class compilationEngine
     {
         $this->writeNonTerminalStart('doStatement');
         $this->advance(); // do
-
-        $functionName = $this->nextToken;
         $this->advance(); // subroutineName | className | varName
-        $countName = 1;
-        $isOwnMethod = false;
-        if ($this->lookAheadToken('.') || $this->lookAheadToken('(')) {
+        while ($this->lookAheadToken('.') || $this->lookAheadToken('(')) {
             if ($this->lookAheadToken('.')) {
                 $this->advance(); // .
-
-                $isHasVariabel = false;
-                if ($this->symbolTable->kindOf($functionName) != 'NONE') {
-                    // $this->VMWriter->writePush('local', $this->symbolTable->indexOf($functionName));
-                    $isHasVariabel = true;
-                    $this->autoPush($functionName);
-                    $functionName = $this->symbolTable->typeOf($functionName) . '.' . $this->nextToken;
-                } else {
-                    $functionName .= "." . $this->nextToken;
-                }
                 $this->advance(); // subroutineName
                 $this->advance(); // (
                 $this->compileExpressionList();
                 $this->advance(); // )
-                if ($isHasVariabel) {
-                    $this->VMWriter->writeCall($functionName, $this->expressionListCount + 1);
-                } else {
-                    $this->VMWriter->writeCall($functionName, $this->expressionListCount);
-                }
-                $this->VMWriter->writePop('temp', 0);
-                $this->expressionListCount = 0;
             } elseif ($this->lookAheadToken('(')) {
-                if ($countName == 1) {
-                    $isOwnMethod = true;
-                }
-                if ($isOwnMethod) {
-                    $this->VMWriter->writePush('pointer', 0);
-                    $this->expressionListCount++;
-                }
                 $this->advance(); // (
                 $this->compileExpressionList();
                 $this->advance(); // )
-                $this->VMWriter->writeCall($this->symbolTable->className . '.' . $functionName, $this->expressionListCount);
-                $this->VMWriter->writePop('temp', 0);
-                $this->expressionListCount = 0;
             }
-            $countName++;
         }
         $this->advance(); // ;
         $this->writeNonTerminalEnd('doStatement');
@@ -552,13 +423,7 @@ class compilationEngine
         $this->advance(); // return
         if (!$this->lookAheadToken(';')) {
             $this->compileExpression();
-        } else {
-            $this->VMWriter->writePush('constant', 0);
         }
-        $this->VMWriter->writeReturn();
-        $this->VMWriter->close();
-        $this->VMWriter->whileIndex = 0;
-        $this->VMWriter->ifIndex = 0;
         $this->advance(); // ;
         $this->writeNonTerminalEnd('returnStatement');
     }
@@ -568,29 +433,8 @@ class compilationEngine
         $this->writeNonTerminalStart('expression');
         $this->compileTerm();
         while ($this->isNextOperator()) {
-            $operator = $this->nextToken;
             $this->advance(); // operator
             $this->compileTerm();
-
-            if ($operator == '+') {
-                $this->VMWriter->writeArithmetic('add');
-            } elseif ($operator == '-') {
-                $this->VMWriter->writeArithmetic('sub');
-            } elseif ($operator == '*') {
-                $this->VMWriter->writeCall('Math.multiply', 2);
-            } elseif ($operator == '/') {
-                $this->VMWriter->writeCall('Math.divide', 2);
-            } elseif ($operator == '&amp;') {
-                $this->VMWriter->writeArithmetic('and');
-            } elseif ($operator == '|') {
-                $this->VMWriter->writeArithmetic('or');
-            } elseif ($operator == '&lt;') {
-                $this->VMWriter->writeArithmetic('lt');
-            } elseif ($operator == '&gt;') {
-                $this->VMWriter->writeArithmetic('gt');
-            } elseif ($operator == '=') {
-                $this->VMWriter->writeArithmetic('eq');
-            }
         }
         $this->writeNonTerminalEnd('expression');
     }
@@ -599,80 +443,31 @@ class compilationEngine
     {
         $this->writeNonTerminalStart('term');
         if ($this->lookAheadTokenType('INT_CONST')) {
-            $this->VMWriter->writePush('constant', $this->nextToken);
             $this->advance(); // intConst
         } elseif ($this->lookAheadTokenType('STRING_CONST')) {
-            $stringConst = $this->nextToken;
-
-            $this->VMWriter->writePush('constant', strlen($stringConst));
-            $this->VMWriter->writeCall('String.new', 1);
-            for ($i = 0; $i < strlen($stringConst); $i++) {
-                $this->VMWriter->writePush('constant', ord($stringConst[$i]));
-                $this->VMWriter->writeCall('String.appendChar', 2);
-            }
             $this->advance(); // stringConst
         } elseif ($this->isNextKeywordConstant()) {
-            if ($this->lookAheadToken('true')) {
-                $this->VMWriter->writePush('constant', 0);
-                $this->VMWriter->writeArithmetic('not');
-            } elseif ($this->lookAheadToken('false') || $this->lookAheadToken('null')) {
-                $this->VMWriter->writePush('constant', 0);
-            } elseif ($this->lookAheadToken('this')) {
-                $this->VMWriter->writePush('pointer', 0);
-            }
             $this->advance(); // keywordConstant
         } elseif ($this->lookAheadTokenType('IDENTIFIER')) {
-            $pushVarName = $this->nextToken;
             $this->advance(); // varName
             if ($this->lookAheadToken('[')) {
                 $this->advance(); // [
                 $this->compileExpression();
-                // $this->VMWriter->writePush('local', $this->symbolTable->indexOf($pushVarName));
-                $this->autoPush($pushVarName);
-                $this->VMWriter->writeArithmetic('add');
-                $this->VMWriter->writePop('pointer', 1);
-                $this->VMWriter->writePush('that', 0);
                 $this->advance(); // ]
             } elseif ($this->lookAheadToken('.')) {
                 $this->advance(); // .
-                $isHasVariabel = false;
-                if ($this->symbolTable->kindOf($pushVarName) != 'NONE') {
-                    $isHasVariabel = true;
-                    $functionName = $this->symbolTable->typeOf($pushVarName) . '.' . $this->nextToken;
-                    // $this->VMWriter->writePush('local', $this->symbolTable->indexOf($pushVarName));
-                    $this->autoPush($pushVarName);
-                } else {
-                    $functionName = $pushVarName . '.' . $this->nextToken;
-                }
                 $this->advance(); // subroutineName
                 $this->advance(); // (
                 $this->compileExpressionList();
                 $this->advance(); // )
-                if ($isHasVariabel) {
-                    $this->VMWriter->writeCall($functionName, $this->expressionListCount + 1);
-                } else {
-                    $this->VMWriter->writeCall($functionName, $this->expressionListCount);
-                }
-                // $this->VMWriter->writeCall($functionName, $this->expressionListCount);
-                $this->expressionListCount = 0;
             } elseif ($this->lookAheadToken('(')) {
                 $this->advance(); // (
                 $this->compileExpressionList();
                 $this->advance(); // )
-                $this->VMWriter->writeCall($this->symbolTable->className . '.' . $pushVarName, $this->expressionListCount + 1);
-                $this->expressionListCount = 0;
-            } else {
-                $this->autoPush($pushVarName);
             }
         } elseif ($this->isNextUnaryOperator()) {
-            $unaryOperator = $this->nextToken;
             $this->advance(); // unaryOp
             $this->compileTerm();
-            if ($unaryOperator == '-') {
-                $this->VMWriter->writeArithmetic('neg');
-            } elseif ($unaryOperator == '~') {
-                $this->VMWriter->writeArithmetic('not');
-            }
         } elseif ($this->lookAheadToken('(')) {
             $this->advance(); // (
             $this->compileExpression();
@@ -685,41 +480,13 @@ class compilationEngine
     {
         $this->writeNonTerminalStart('expressionList');
         if (!$this->lookAheadToken(')')) {
-            $this->expressionListCount++;
             $this->compileExpression();
             while ($this->lookAheadToken(',')) {
                 $this->advance(); // ,
-                $this->expressionListCount++;
                 $this->compileExpression();
             }
         }
         $this->writeNonTerminalEnd('expressionList');
-    }
-
-    private function autoPush($varName)
-    {
-        if ($this->symbolTable->kindOf($varName) == 'VAR') {
-            $this->VMWriter->writePush('local', $this->symbolTable->indexOf($varName));
-        } elseif ($this->symbolTable->kindOf($varName) == 'ARG') {
-            $this->VMWriter->writePush('argument', $this->symbolTable->indexOf($varName));
-        } elseif ($this->symbolTable->kindOf($varName) == 'FIELD') {
-            $this->VMWriter->writePush('this', $this->symbolTable->indexOf($varName));
-        } elseif ($this->symbolTable->kindOf($varName) == 'STATIC') {
-            $this->VMWriter->writePush('static', $this->symbolTable->indexOf($varName));
-        }
-    }
-
-    private function autoPop($varName)
-    {
-        if ($this->symbolTable->kindOf($varName) == 'VAR') {
-            $this->VMWriter->writePop('local', $this->symbolTable->indexOf($varName));
-        } elseif ($this->symbolTable->kindOf($varName) == 'ARG') {
-            $this->VMWriter->writePop('argument', $this->symbolTable->indexOf($varName));
-        } elseif ($this->symbolTable->kindOf($varName) == 'FIELD') {
-            $this->VMWriter->writePop('this', $this->symbolTable->indexOf($varName));
-        } elseif ($this->symbolTable->kindOf($varName) == 'STATIC') {
-            $this->VMWriter->writePop('static', $this->symbolTable->indexOf($varName));
-        }
     }
 }
 
@@ -728,10 +495,7 @@ class SymbolTable
     private $classScope = [];
     private $subroutineScope = [];
     private $staticIndex = 0, $fieldIndex = 0, $argIndex = 0, $varIndex = 0;
-
     public $className = '';
-    public $subroutineName = '';
-    public $subroutineType = '';
 
     public function __construct()
     {
@@ -796,6 +560,8 @@ class SymbolTable
             return $this->subroutineScope[$name]['type'];
         } elseif (array_key_exists($name, $this->classScope)) {
             return $this->classScope[$name]['type'];
+        } else {
+            return 'NONE';
         }
     }
 
@@ -805,69 +571,9 @@ class SymbolTable
             return $this->subroutineScope[$name]['index'];
         } elseif (array_key_exists($name, $this->classScope)) {
             return $this->classScope[$name]['index'];
+        } else {
+            return 'NONE';
         }
-    }
-}
-
-class VMWriter
-{
-    private $outputFile;
-    private $output = '';
-    public $ifIndex = 0, $whileIndex = 0;
-
-    public function __construct($outputFile)
-    {
-        $this->outputFile = $outputFile;
-    }
-
-    public function writePush($segment, $index)
-    {
-        $this->output .= "push $segment $index\n";
-    }
-
-    public function writePop($segment, $index)
-    {
-        $this->output .= "pop $segment $index\n";
-    }
-
-    public function writeArithmetic($command)
-    {
-        $this->output .= "$command\n";
-    }
-
-    public function writeLabel($label)
-    {
-        $this->output .= "label $label\n";
-    }
-
-    public function writeGoto($label)
-    {
-        $this->output .= "goto $label\n";
-    }
-
-    public function writeIf($label)
-    {
-        $this->output .= "if-goto $label" . "\n";
-    }
-
-    public function writeCall($name, $nArgs)
-    {
-        $this->output .= "call $name $nArgs\n";
-    }
-
-    public function writeFunction($name, $nLocals)
-    {
-        $this->output .= "function $name $nLocals\n";
-    }
-
-    public function writeReturn()
-    {
-        $this->output .= "return\n";
-    }
-
-    public function close()
-    {
-        file_put_contents($this->outputFile, $this->output);
     }
 }
 
@@ -888,8 +594,7 @@ class jackAnalyzer
     public function analyze($inputFile)
     {
         $symbolTable = new SymbolTable();
-        $VMWriter = new VMWriter(str_replace('.jack', 'php.vm', $inputFile));
-        $compilationEngine = new CompilationEngine($inputFile, $symbolTable, $VMWriter);
+        $compilationEngine = new CompilationEngine($inputFile, $symbolTable);
     }
 }
 
@@ -899,6 +604,7 @@ function main($argv)
         $inputFolderOrFile = $argv[1];
         $jackAnalyzer = new JackAnalyzer($inputFolderOrFile);
     } else {
+        echo "Usage: php JackTokenizer.php <inputFile.jack>\n";
     }
 }
 

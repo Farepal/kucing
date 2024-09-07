@@ -1,0 +1,76 @@
+class Main {
+    field int x, y;
+
+    function void main() {
+        var int length;
+        var int i, sum;
+        let length = 8 + 7;
+        let x = 2;
+        let y = 3;
+        let i  = length * y / x;
+        // let sum = x + y;
+        return;
+    }
+
+    function int test() {
+        var int length;
+        var int i, sum;
+        let length = 8 + 7;
+        let x = 2;
+        let y = 3;
+        if (length > 10) {
+            let i = length * y / x;
+            if (length > 10) {
+                let i = length * y / x;
+            } else {
+                while (length > 10) {
+                    let i = length * y / x;
+                }
+                let i = length * y / x;
+            }
+        } else {
+            if (length > 10) {
+                let i = length * y / x;
+            }
+            let i = length * y / x;
+        }
+        return i;
+    }
+
+    function int stringTest () {
+        do Output.printString("Test 1: expected result: 5; actual result: ");
+        do show();
+        return 20;
+    }
+
+    method void show() {
+        do Output.printString("Test 1: expected result: 5; actual result: ");
+        return;
+    }
+
+    function Array testArray() {
+        var Array a;
+        let a = Array.new(5);
+        do a.dispose();
+        return a;
+    }
+
+    function void testUnaryOp() {
+        if (~(x > 10)) {
+            let x = 1;
+        } else {
+            let x = 2;
+        }
+        return;
+    }
+
+    function void testOp(int a, int b, int c) {
+        var int i, j, k;
+        let i = 10;
+        let j = 20;
+        let k = 30;
+        let i = i + (j * k);
+        let x = a + b + c;
+        return;
+    }
+}
