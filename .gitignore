@@ -10,7 +10,6 @@ belajarDocker
 *.pdf
 *Config.js
 penyimpanan*.js
-find*
 *.pyc
 *.out
 *eclipse*
