@@ -1,0 +1,22 @@
+meta {
+  name: command
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:5000/api/esp/command
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "target_device_id": "esp01_sim_001",
+    "action": "set_led",
+    "payload": {
+      "led_id": "main_indicator",
+      "status": "on"
+    }
+  }
+}
