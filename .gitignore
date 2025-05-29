@@ -50,3 +50,7 @@ Cargo.lock
 !*.*
 
 *.zip
+
+*.pem
+
+*/node_modules
